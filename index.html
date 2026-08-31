@@ -32,11 +32,11 @@
         .event-card { border-left: 4px solid var(--gold); background: rgba(255, 215, 0, 0.1); }
         
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 100; }
-        .modal-content { background: var(--panel); padding: 30px; border-radius: 12px; max-width: 750px; width: 90%; text-align: center; border: 2px solid var(--primary); max-height: 85vh; overflow-y: auto; }
+        .modal-content { background: var(--panel); padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; text-align: center; border: 2px solid var(--primary); max-height: 85vh; overflow-y: auto; }
         .choices { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
 
         .flex-row { display: flex; gap: 10px; justify-content: space-between; }
-        .avg-box { background: rgba(33, 150, 243, 0.2); border: 1px solid var(--info); padding: 10px; border-radius: 8px; text-align: center; font-size: 13px; margin-bottom: 10px;}
+        .avg-box { background: rgba(33, 150, 243, 0.2); border: 1px solid var(--info); padding: 10px; border-radius: 8px; text-align: center; font-size: 14px; margin-bottom: 10px;}
         
         .shop-item { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border: 1px solid #555;}
         .shop-item-text { flex: 1; text-align: left !important; padding-right: 15px; }
@@ -46,7 +46,7 @@
         
         .trophy-won { color: var(--gold); font-weight: bold; background: rgba(255,215,0,0.1); border: 1px solid var(--gold); padding: 6px 10px; border-radius: 5px; margin: 4px; display: inline-block; font-size: 13px;}
         
-        /* Table des stats avancées */
+        /* Table des stats */
         .table-container { width: 100%; overflow-x: auto; margin-top: 15px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 600px; }
         th, td { border: 1px solid #444; padding: 6px 4px; text-align: center; }
@@ -181,6 +181,7 @@
                     <button id="btn-draft" class="btn" style="background:var(--gold); color:black; display:none;" onclick="runDraft()">🏀 Se déclarer à la Draft</button>
                     <button id="btn-end-season" class="btn" style="background:var(--gold); color:black; display:none;" onclick="checkPlayoffs()">📊 Voir le Bilan de la Saison</button>
                     <button id="btn-next-po" class="btn" style="background:var(--gold); color:black; display:none;" onclick="resolvePlayoffSeries()">🏆 Résultat de la Série</button>
+
                 </div>
 
                 <div id="game-log" class="log"></div>
@@ -339,7 +340,6 @@
             stats: getBaseStats(pos), energy: 100, chemistry: 50, fans: 0, money: 0,
             trainTokens: 2, restTokens: 2, match: 1, maxMatches: 10, wins: 0, losses: 0,
             
-            // TRACKING STATS REALISTES
             totMin: 0, totPts: 0, totReb: 0, totOreb: 0, totDreb: 0, totAst: 0, 
             totStl: 0, totBlk: 0, totTov: 0, totFgm: 0, totFga: 0, tot3pm: 0, tot3pa: 0, totMatches: 0, 
             
@@ -423,12 +423,21 @@
         if(player.phase === 'playoffs') {
             let rName = ["", "Quart de Conf", "Demi de Conf", "Finale Conf", "FINALES NBA"];
             document.getElementById('ui-season-phase').innerHTML = `🏆 PLAYOFFS : ${rName[player.playoffRound]}`;
+            
+            document.getElementById('ui-wins').innerText = player.playoffWins; 
+            document.getElementById('ui-losses').innerText = player.playoffLosses;
+            
             if(player.playoffWins === 4 || player.playoffLosses === 4) {
-                pb.style.display = 'none'; bPO.style.display = 'block';
+                pb.style.display = 'none';
+                bPO.style.display = 'block';
             }
         } else {
             let displayMatch = Math.min(player.match, player.maxMatches);
             document.getElementById('ui-season-phase').innerHTML = `${phaseName} : Match ${displayMatch} / ${player.maxMatches}`;
+            
+            document.getElementById('ui-wins').innerText = player.wins; 
+            document.getElementById('ui-losses').innerText = player.losses;
+            
             if (player.match > player.maxMatches) {
                 pb.style.display = 'none';
                 if(player.phase === 'hs') bHS.style.display = 'block';
@@ -458,9 +467,12 @@
         let targets = [];
         if(category === 'shoot') targets = ['3pt', 'mid', 'ft'];
         if(category === 'finish') targets = ['close', 'layup', 'dunk', 'sdunk'];
-        if(category === 'play') targets = ['pass', 'handle', 'agi'];
+        
+        // CORRECTION DE L'AGILITÉ DANS LA BONNE CATÉGORIE
+        if(category === 'play') targets = ['pass', 'handle'];
+        if(category === 'phys') targets = ['spd', 'str', 'vert', 'reb', 'agi'];
+        
         if(category === 'def') targets = ['pdef', 'idef', 'stl', 'blk'];
-        if(category === 'phys') targets = ['spd', 'str', 'vert', 'reb'];
 
         let msg = `🏋️ <strong>Entraînement :</strong><br>`;
         let gainedSomething = false;
@@ -473,15 +485,13 @@
             let gain = 1;
 
             if (player.phase === 'hs' || player.phase === 'college') {
-                gain = Math.floor(Math.random() * 2) + 1; // +1 à +2
+                gain = Math.floor(Math.random() * 2) + 1; 
             } else {
-                // NBA : Plafond de progression (Soft Cap)
                 if (current >= 90) chance = 15;
                 else if (current >= 80) chance = 35;
                 else if (current >= 70) chance = 60;
                 else chance = 100;
-                
-                if (player.hasGym) chance += 15; // Bonus Salle
+                if (player.hasGym) chance += 15; 
             }
 
             if ((Math.random() * 100) < chance) {
@@ -566,7 +576,7 @@
         
         let histHtml = "";
         player.history.forEach(h => {
-            histHtml += `<tr><td>${h.season}</td><td>${h.team}</td><td>${h.min}</td><td>${h.pts}</td><td>${h.reb}</td><td>${h.ast}</td><td>${h.stl}</td><td>${h.blk}</td><td>${h.fg}%</td><td>${h.tp}%</td><td>${h.wins}V-${h.losses}D</td></tr>`;
+            histHtml += `<tr><td>S${h.season}</td><td>${h.team}</td><td>${h.min}</td><td>${h.pts}</td><td>${h.reb}</td><td>${h.ast}</td><td>${h.stl}</td><td>${h.blk}</td><td>${h.fg}%</td><td>${h.tp}%</td><td>${h.wins}V-${h.losses}D</td></tr>`;
         });
         document.getElementById('stats-history').innerHTML = histHtml;
         document.getElementById('stats-modal').style.display = 'flex';
@@ -592,7 +602,7 @@
                 if (player.match === 25 && !player.cupPlayed) { triggerNbaCup(); return; }
                 if (player.match === 50 && !player.asgPlayed) { triggerASG(); return; }
                 
-                let isKeyGame = (Math.random() < 0.05); // 5% de chance de match crucial
+                let isKeyGame = (Math.random() < 0.05); 
                 if (isKeyGame) { triggerKeyGame(); return; }
             }
             
@@ -623,25 +633,23 @@
         player.trainTokens = Math.min(10, player.trainTokens + 1);
         player.restTokens = Math.min(10, player.restTokens + 1);
 
-        // --- GESTION DES MINUTES ---
         let minutes = 30;
         if(player.phase === 'regular' || player.phase === 'playoffs') {
-            if(player.role === 'Banc') minutes = 12 + Math.floor(Math.random()*6); // 12-17
-            else if(player.role === '6ème Homme') minutes = 24 + Math.floor(Math.random()*6); // 24-29
-            else if(player.role === 'Titulaire') minutes = 30 + Math.floor(Math.random()*6); // 30-35
-            else minutes = 34 + Math.floor(Math.random()*6); // 34-39
+            if(player.role === 'Banc') minutes = 12 + Math.floor(Math.random()*6); 
+            else if(player.role === '6ème Homme') minutes = 24 + Math.floor(Math.random()*6); 
+            else if(player.role === 'Titulaire') minutes = 30 + Math.floor(Math.random()*6); 
+            else minutes = 34 + Math.floor(Math.random()*6); 
         } else { minutes = 22 + Math.floor(Math.random()*10); } 
 
         let fatigue = player.hasNutri ? Math.floor(minutes * 0.3) : Math.floor(minutes * 0.4); 
         player.energy = Math.max(0, player.energy - fatigue);
         
-        if(player.energy < 40) minutes = Math.floor(minutes * 0.7); // On joue moins si on est carbonisé
+        if(player.energy < 40) minutes = Math.floor(minutes * 0.7); 
         
-        let usage = minutes / 36; // Scaler pour les stats
+        let usage = minutes / 36; 
         if(player.role === 'Franchise Player') usage *= 1.3;
         if(player.role === 'Banc') usage *= 0.8;
 
-        // --- SIMULATION DU MATCH D'ÉQUIPE ---
         let ovr = calcOVR();
         let oppOvr = 40;
         if (player.phase === 'college') oppOvr = 60;
@@ -664,20 +672,17 @@
         let myScore = isWin ? Math.floor(Math.random()*20)+100 : Math.floor(Math.random()*20)+80;
         let oppScore = isWin ? myScore - Math.floor(Math.random()*15)-1 : myScore + Math.floor(Math.random()*15)+1;
 
-        // --- GÉNÉRATION STATS AVANCÉES ---
         let base2pScore = (player.stats.close + player.stats.layup + player.stats.mid + player.stats.dunk + player.stats.sdunk) / 5;
         let base3pScore = player.stats['3pt'];
         
-        // Tirs
         let attempts3p = Math.floor((base3pScore / 15) * usage) + Math.floor(Math.random()*3);
         let attempts2p = Math.floor((base2pScore / 10) * usage) + Math.floor(Math.random()*5);
         
         let makes3p = 0; let makes2p = 0;
-        let bonusShooting = (player.chemistry > 75) ? 5 : 0; // Bonne alchimie = bons tirs ouverts
+        let bonusShooting = (player.chemistry > 75) ? 5 : 0; 
         for(let i=0; i<attempts3p; i++) { if(Math.random()*100 < (base3pScore * 0.45 + 10 + bonusShooting)) makes3p++; }
         for(let i=0; i<attempts2p; i++) { if(Math.random()*100 < (base2pScore * 0.50 + 15 + bonusShooting)) makes2p++; }
         
-        // Lancers
         let attemptsFt = Math.floor(((base2pScore+player.stats.str)/25) * usage) + Math.floor(Math.random()*3);
         let makesFt = 0;
         for(let i=0; i<attemptsFt; i++) { if(Math.random()*100 < player.stats.ft) makesFt++; }
@@ -686,19 +691,16 @@
         let fga = attempts2p + attempts3p;
         let fgm = makes2p + makes3p;
 
-        // Rebonds
         let oreb = Math.floor(((player.stats.reb + player.stats.str + player.stats.vert) / 40) * usage) + (Math.random() < 0.5 ? 1 : 0);
         let dreb = Math.floor(((player.stats.reb + player.stats.idef) / 15) * usage) + Math.floor(Math.random()*3);
         let reb = oreb + dreb;
 
-        // Autres stats
         let ast = Math.floor(((player.stats.pass + player.stats.handle) / 15) * usage) + Math.floor(Math.random()*3);
         let stl = Math.floor(((player.stats.stl + player.stats.spd + player.stats.pdef) / 60) * usage) + (Math.random() < 0.4 ? 1 : 0);
         let blk = Math.floor(((player.stats.blk + player.stats.vert + player.stats.idef) / 70) * usage) + (Math.random() < 0.3 ? 1 : 0);
         let tov = Math.floor(usage * 3) - Math.floor(player.stats.handle/30) + Math.floor(Math.random()*3);
         if(tov < 0) tov = 0;
 
-        // Records en carrière
         if (pts > player.records.pts) player.records.pts = pts;
         if (reb > player.records.reb) player.records.reb = reb;
         if (ast > player.records.ast) player.records.ast = ast;
@@ -706,7 +708,6 @@
         if (blk > player.records.blk) player.records.blk = blk;
         if (makes3p > player.records['3pm']) player.records['3pm'] = makes3p;
 
-        // Cumul
         player.totMin += minutes; player.totPts += pts; player.totAst += ast; 
         player.totReb += reb; player.totOreb += oreb; player.totDreb += dreb;
         player.totFgm += fgm; player.totFga += fga; player.tot3pm += makes3p; player.tot3pa += attempts3p;
@@ -733,9 +734,6 @@
         let prefix = player.phase === 'playoffs' ? `🏆 PO T${player.playoffRound} M${player.playoffWins+player.playoffLosses} ` : `📅 M${player.match} `;
         let title = isWin ? `${prefix}VICTOIRE (${myScore}-${oppScore})` : `${prefix}DÉFAITE (${myScore}-${oppScore})`;
         
-        let pFG = fga > 0 ? Math.round((fgm/fga)*100) : 0;
-        let p3P = attempts3p > 0 ? Math.round((makes3p/attempts3p)*100) : 0;
-
         let htmlLog = `<strong>${title}</strong><br>`;
         if (clutchMsg) htmlLog += `<em style="color:var(--gold);">${clutchMsg}</em><br>`;
         htmlLog += `📊 ${minutes} MIN | ${pts} PTS (${fgm}/${fga} Tirs, ${makes3p}/${attempts3p} 3PT) | ${reb} REB (${oreb} OFF)<br>`;
@@ -761,7 +759,8 @@
             { text: "Jouer le match décisif", action: () => {
                 let isWin = (calcOVR() + Math.random()*20) > 85;
                 if(isWin) {
-                    player.awards.push("Vainqueur NBA Cup", "MVP de la NBA Cup");
+                    player.awards.push({name: "Vainqueur NBA Cup", season: player.season});
+                    player.awards.push({name: "MVP de la NBA Cup", season: player.season});
                     player.seasonAwards.push("Vainqueur NBA Cup", "MVP de la NBA Cup");
                     player.teamImpact[player.team] = (player.teamImpact[player.team] || 0) + 10;
                     player.money += 500000; player.fans += 100000;
@@ -776,12 +775,12 @@
         player.asgPlayed = true;
         let avgPts = player.totPts / player.totMatches;
         if (player.fans > 500000 || avgPts > 22) {
-            player.awards.push("All-Star");
+            player.awards.push({name: "All-Star", season: player.season});
             player.seasonAwards.push("All-Star");
             showModal("⭐ ALL-STAR WEEKEND", "Tu es sélectionné pour le All-Star Game !", [
                 { text: "Faire le show !", action: () => {
                     if(Math.random() > 0.5) { 
-                        player.awards.push("MVP All-Star"); 
+                        player.awards.push({name: "MVP All-Star", season: player.season}); 
                         player.seasonAwards.push("MVP All-Star");
                         player.fans += 200000; 
                         logMessage(`⭐ <strong>MVP DU ALL-STAR GAME !</strong>`, 'event'); 
@@ -855,16 +854,16 @@
 
     function advancePlayoffs() {
         if(player.playoffRound === 3) {
-            player.awards.push("Vainqueur de la Conférence");
+            player.awards.push({name: "Vainqueur de la Conférence", season: player.season});
             player.seasonAwards.push("Vainqueur de la Conférence");
         }
         
         if(player.playoffRound === 4) {
-            player.awards.push("Vainqueur des Finales NBA");
+            player.awards.push({name: "Vainqueur des Finales NBA", season: player.season});
             player.seasonAwards.push("Vainqueur des Finales NBA");
-            player.teamImpact[player.team] = (player.teamImpact[player.team] || 0) + 100; // Gros impact
+            player.teamImpact[player.team] = (player.teamImpact[player.team] || 0) + 100; 
             if(Math.random() > 0.3) {
-                player.awards.push("MVP des Finales");
+                player.awards.push({name: "MVP des Finales", season: player.season});
                 player.seasonAwards.push("MVP des Finales");
             }
             showModal("💍 CHAMPION NBA !!!", "Félicitations, tu remportes la Bague de Champion !", [{ text: "Célébrer", action: () => { hideModal(); endSeasonAwards(); }}]);
@@ -879,27 +878,24 @@
 
     function endSeasonAwards() {
         let avgPts = player.totPts / player.totMatches;
-        let avgStl = player.totStl / player.totMatches;
-        let avgBlk = player.totBlk / player.totMatches;
+        let defStat = player.stats.pdef + player.stats.idef;
 
-        if(player.season === 1) { player.awards.push("Rookie of the Year"); player.seasonAwards.push("Rookie of the Year"); }
-        // Conditions MVP plus réalistes : > 25 PTS, > 50 victoires
+        if(player.season === 1) { player.awards.push({name: "Rookie of the Year", season: player.season}); player.seasonAwards.push("Rookie of the Year"); }
+        
         if(avgPts >= 25 && player.wins >= 50) { 
-            player.awards.push("MVP"); player.seasonAwards.push("MVP"); 
+            player.awards.push({name: "MVP", season: player.season}); player.seasonAwards.push("MVP"); 
             player.teamImpact[player.team] = (player.teamImpact[player.team] || 0) + 50; 
         }
-        // DPOY basé sur les vraies stats d'Interception/Contre
-        if((avgStl + avgBlk) >= 3.0 || calcOVR() >= 95 && Math.random() < 0.2) { player.awards.push("Meilleur défenseur"); player.seasonAwards.push("Meilleur défenseur"); }
-        if(player.role === 'Banc' || player.role === '6ème Homme') { player.awards.push("Meilleur 6ème homme"); player.seasonAwards.push("Meilleur 6ème homme"); }
+        if((player.totStl/player.totMatches + player.totBlk/player.totMatches) >= 3.0 || calcOVR() >= 95 && Math.random() < 0.2) { player.awards.push({name: "Meilleur défenseur", season: player.season}); player.seasonAwards.push("Meilleur défenseur"); }
+        if(player.role === 'Banc' || player.role === '6ème Homme') { player.awards.push({name: "Meilleur 6ème homme", season: player.season}); player.seasonAwards.push("Meilleur 6ème homme"); }
 
-        // Sauvegarde de la ligne de stats historiques de la saison
         let fgPct = player.totFga > 0 ? ((player.totFgm / player.totFga) * 100).toFixed(1) : "0.0";
         let tpPct = player.tot3pa > 0 ? ((player.tot3pm / player.tot3pa) * 100).toFixed(1) : "0.0";
         player.history.push({
             season: player.season, team: player.team, ovr: calcOVR(),
             min: (player.totMin / player.totMatches).toFixed(1),
             pts: avgPts.toFixed(1), reb: (player.totReb / player.totMatches).toFixed(1), 
-            ast: (player.totAst / player.totMatches).toFixed(1), stl: avgStl.toFixed(1), blk: avgBlk.toFixed(1),
+            ast: (player.totAst / player.totMatches).toFixed(1), stl: (player.totStl/player.totMatches).toFixed(1), blk: (player.totBlk/player.totMatches).toFixed(1),
             fg: fgPct, tp: tpPct, wins: player.wins, losses: player.losses
         });
 
@@ -912,7 +908,7 @@
             awdHtml = "Aucun trophée majeur pour cette année.";
         }
 
-        showModal("🏅 BILAN DE LA SAISON", `La saison est finie. Voici les honneurs que tu as remportés cette année :<br><br><div style="margin-top:10px;">${awdHtml}</div>`, [{ text: "Intersaison", action: () => { hideModal(); handleFreeAgency(); }}]);
+        showModal("🏅 BILAN DE LA SAISON", `La saison est finie avec un bilan de <strong style="color:var(--success)">${player.wins}V</strong> - <strong style="color:var(--danger)">${player.losses}D</strong>.<br><br>Voici les honneurs que tu as remportés cette année :<br><br><div style="margin-top:10px;">${awdHtml}</div>`, [{ text: "Intersaison", action: () => { hideModal(); handleFreeAgency(); }}]);
     }
 
     function handleFreeAgency() {
@@ -920,7 +916,6 @@
         player.age++; player.contractYears--;
         player.phase = 'regular'; player.match = 1; player.maxMatches = 82; player.wins = 0; player.losses = 0;
         
-        // Reset des compteurs saisonniers
         player.totMin=0; player.totPts=0; player.totAst=0; player.totReb=0; player.totOreb=0; player.totDreb=0; 
         player.totFgm=0; player.totFga=0; player.tot3pm=0; player.tot3pa=0; player.totStl=0; player.totBlk=0; player.totTov=0;
         player.totMatches=0; player.cupPlayed=false; player.asgPlayed=false;
@@ -953,7 +948,8 @@
             player.season = 1; 
             player.match = 1;
             player.maxMatches = 82;
-            player.wins = 0; player.losses = 0;
+            player.wins = 0;
+            player.losses = 0;
             player.totMin=0; player.totPts=0; player.totAst=0; player.totReb=0; player.totOreb=0; player.totDreb=0; 
             player.totFgm=0; player.totFga=0; player.tot3pm=0; player.tot3pa=0; player.totStl=0; player.totBlk=0; player.totTov=0;
             player.totMatches=0; player.cupPlayed=false; player.asgPlayed=false;
@@ -975,16 +971,15 @@
     }
 
     function retire(isUndrafted) {
-        let retiredJerseys = [];
         for(let t in player.teamImpact) {
-            if(player.teamImpact[t] >= 150) { // 150 pts = 1 MVP + 1 bague, ou long run.
-                retiredJerseys.push(t);
-                player.awards.push(`Maillot #${player.jersey} retiré par les ${t}`);
+            if(player.teamImpact[t] >= 150) { 
+                player.awards.push({name: `🎽 Maillot #${player.jersey} retiré par les ${t}`, season: player.season});
             }
         }
 
         let pantheon = JSON.parse(localStorage.getItem('hof_pantheon_sim')) || [];
-        let ringCount = player.awards.filter(x => x==="Vainqueur des Finales NBA").length;
+        
+        let ringCount = player.awards.filter(x => (typeof x === 'string' ? x : x.name) === "Vainqueur des Finales NBA").length;
         
         pantheon.push({
             name: player.name, pos: player.pos, jersey: player.jersey, ovr: calcOVR(),
@@ -1002,11 +997,22 @@
         
         if (!isUndrafted && player.awards.length > 0) {
             let awardCounts = {};
-            player.awards.forEach(a => { awardCounts[a] = (awardCounts[a] || 0) + 1; });
+            player.awards.forEach(a => { 
+                let name = typeof a === 'string' ? a : a.name;
+                let season = typeof a === 'string' ? "" : a.season;
+                
+                if(!awardCounts[name]) awardCounts[name] = { count: 0, seasons: [] };
+                awardCounts[name].count++;
+                if(season) awardCounts[name].seasons.push("S" + season);
+            });
             
             let awdHtml = Object.keys(awardCounts)
-                .filter(a => a !== "Vainqueur des Finales NBA") 
-                .map(a => `<span class="trophy-won">🏆x${awardCounts[a]} ${a}</span>`).join(" ");
+                .filter(name => name !== "Vainqueur des Finales NBA") 
+                .map(name => {
+                    let data = awardCounts[name];
+                    let seasonText = data.seasons.length > 0 ? ` <span style="font-size:10px; color:#aaa;">(${data.seasons.join(', ')})</span>` : "";
+                    return `<span class="trophy-won">🏆x${data.count} ${name}${seasonText}</span>`;
+                }).join(" ");
             
             if(awdHtml !== "") {
                 msg += `<br><strong>Palmarès :</strong><br><div style="margin-top:10px;">${awdHtml}</div>`;
@@ -1027,11 +1033,24 @@
                 let r = ""; for(let i=0; i<p.rings; i++) r+="💍";
                 
                 let awardCounts = {};
-                if (p.awards) p.awards.forEach(a => { awardCounts[a] = (awardCounts[a] || 0) + 1; });
+                if (p.awards) {
+                    p.awards.forEach(a => { 
+                        let name = typeof a === 'string' ? a : a.name;
+                        let season = typeof a === 'string' ? "" : a.season;
+                        
+                        if(!awardCounts[name]) awardCounts[name] = { count: 0, seasons: [] };
+                        awardCounts[name].count++;
+                        if(season) awardCounts[name].seasons.push("S" + season);
+                    });
+                }
                 
                 let awdHtml = Object.keys(awardCounts)
-                    .filter(a => a !== "Vainqueur des Finales NBA") 
-                    .map(a => `<span class="trophy-won">🏆x${awardCounts[a]} ${a}</span>`).join(" ");
+                    .filter(name => name !== "Vainqueur des Finales NBA") 
+                    .map(name => {
+                        let data = awardCounts[name];
+                        let seasonText = data.seasons.length > 0 ? ` <span style="font-size:10px; color:#aaa;">(${data.seasons.join(', ')})</span>` : "";
+                        return `<span class="trophy-won">🏆x${data.count} ${name}${seasonText}</span>`;
+                    }).join(" ");
                 
                 html += `<div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-bottom:10px; border-left:4px solid var(--gold);">
                     <strong style="font-size:20px; color:var(--primary)">${p.name} #${p.jersey || "??"} (${p.pos}) - OVR ${p.ovr}</strong><br>
